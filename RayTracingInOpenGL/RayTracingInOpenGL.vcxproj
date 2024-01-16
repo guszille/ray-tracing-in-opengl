@@ -154,6 +154,7 @@
     <ClCompile Include="sources\graphics\texture.cpp" />
     <ClCompile Include="sources\graphics\vao.cpp" />
     <ClCompile Include="sources\graphics\vbo.cpp" />
+    <ClCompile Include="sources\utils\camera.cpp" />
     <ClCompile Include="sources\utils\debug.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -162,12 +163,14 @@
     <ClInclude Include="sources\graphics\texture.h" />
     <ClInclude Include="sources\graphics\vao.h" />
     <ClInclude Include="sources\graphics\vbo.h" />
+    <ClInclude Include="sources\utils\camera.h" />
     <ClInclude Include="sources\utils\debug.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="sources\shaders\output_tex_cs.glsl" />
-    <None Include="sources\shaders\screen_quad_fs.glsl" />
-    <None Include="sources\shaders\screen_quad_vs.glsl" />
+    <None Include="sources\shaders\render_output_tex_rt_cs_exemple.glsl" />
+    <None Include="sources\shaders\render_output_tex_rt_cs.glsl" />
+    <None Include="sources\shaders\render_screen_quad_fs.glsl" />
+    <None Include="sources\shaders\render_screen_quad_vs.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

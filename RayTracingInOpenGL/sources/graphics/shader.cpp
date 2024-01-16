@@ -89,6 +89,34 @@ void ShaderProgram::setUniform1f(const char* uniformName, float data)
 	}
 }
 
+void ShaderProgram::setUniform3f(const char* uniformName, const glm::vec3& data)
+{
+	int uniformLocation = glGetUniformLocation(ID, uniformName);
+
+	if (uniformLocation > -1)
+	{
+		glUniform3f(uniformLocation, data.x, data.y, data.z);
+	}
+	else
+	{
+		std::cout << "[ERROR] SHADER PROGRAM: Failed to get location of uniform \"" << uniformName << "\"." << std::endl;
+	}
+}
+
+void ShaderProgram::setUniformMatrix4fv(const char* uniformName, const glm::mat4& data)
+{
+	int uniformLocation = glGetUniformLocation(ID, uniformName);
+
+	if (uniformLocation > -1)
+	{
+		glUniformMatrix4fv(uniformLocation, 1, GL_FALSE, glm::value_ptr(data));
+	}
+	else
+	{
+		std::cout << "[ERROR] SHADER PROGRAM: Failed to get location of uniform \"" << uniformName << "\"." << std::endl;
+	}
+}
+
 unsigned int ShaderProgram::createShader(const char* sFilepath, int shaderType)
 {
 	int success;

@@ -39,6 +39,9 @@
     <ClCompile Include="sources\graphics\ibo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="sources\utils\camera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sources\utils\debug.h">
@@ -59,10 +62,14 @@
     <ClInclude Include="sources\graphics\ibo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="sources\utils\camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="sources\shaders\screen_quad_vs.glsl" />
-    <None Include="sources\shaders\screen_quad_fs.glsl" />
-    <None Include="sources\shaders\output_tex_cs.glsl" />
+    <None Include="sources\shaders\render_screen_quad_vs.glsl" />
+    <None Include="sources\shaders\render_screen_quad_fs.glsl" />
+    <None Include="sources\shaders\render_output_tex_rt_cs_exemple.glsl" />
+    <None Include="sources\shaders\render_output_tex_rt_cs.glsl" />
   </ItemGroup>
 </Project>

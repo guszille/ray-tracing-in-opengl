@@ -11,17 +11,24 @@
 #include "sources/graphics/shader.h"
 #include "sources/graphics/texture.h"
 
+#include "sources/utils/camera.h"
 #include "sources/utils/debug.h"
 
 // Global variables.
 int WINDOW_WIDTH = 1280;
 int WINDOW_HEIGHT = 720;
 
-int OUTPUT_TEXTURE_WIDTH = 1000;
-int OUTPUT_TEXTURE_HEIGHT = 1000;
+int OUTPUT_TEXTURE_WIDTH = 1280;
+int OUTPUT_TEXTURE_HEIGHT = 720;
 
-float WINDOW_ASPECT_RATIO = (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT;
 float FIELD_OF_VIEW = 45.0f;
+float WINDOW_ASPECT_RATIO = (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT;
+float CAMERA_TRANSLATION_SPEED = 7.5f;
+float CAMERA_SENSITIVITY = 0.05f;
+float CURSOR_POS_X = (float)WINDOW_WIDTH / 2.0f;
+float CURSOR_POS_Y = (float)WINDOW_HEIGHT / 2.0f;
+
+bool CURSOR_ATTACHED = false;
 
 float DELTA_TIME = 0.0f;
 float LAST_FRAME = 0.0f;
@@ -31,17 +38,21 @@ float LAST_TIME = 0.0f;
 
 unsigned int FRAMES_COUNTER = 0;
 
-ShaderProgram* screenQuadSP;
-ShaderProgram* outputTexSP;
+ShaderProgram* renderScreenQuadSP;
+ShaderProgram* renderOutputTexSP;
 
 Texture* outputTex;
 
 VAO* quadVAO;
 VBO* quadVBO;
 
+Camera camera(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
 // GLFW window callbacks.
 void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 void keyboardCallback(GLFWwindow* window, int key, int scanCode, int action, int mods);
+void cursorPositionCallback(GLFWwindow* window, double xPos, double yPos);
+void scrollCallback(GLFWwindow* window, double xOffset, double yOffset);
 
 void processInput(GLFWwindow* window);
 
@@ -91,11 +102,11 @@ void setupApplication()
 		 1.0f, -1.0f,  0.0f,  1.0f,  0.0f
 	};
 
-	screenQuadSP = new ShaderProgram("sources/shaders/screen_quad_vs.glsl", "sources/shaders/screen_quad_fs.glsl");
-	outputTexSP = new ShaderProgram("sources/shaders/output_tex_cs.glsl");
+	renderScreenQuadSP = new ShaderProgram("sources/shaders/render_screen_quad_vs.glsl", "sources/shaders/render_screen_quad_fs.glsl");
+	renderOutputTexSP = new ShaderProgram("sources/shaders/render_output_tex_rt_cs.glsl");
 
-	screenQuadSP->bind();
-	screenQuadSP->setUniform1i("uTexture", 0);
+	renderScreenQuadSP->bind();
+	renderScreenQuadSP->setUniform1i("u_texture", 0);
 
 	outputTex = new Texture(OUTPUT_TEXTURE_WIDTH, OUTPUT_TEXTURE_HEIGHT, GL_RGBA32F, GL_RGBA, GL_FLOAT);
 
@@ -117,25 +128,28 @@ void setupApplication()
 
 void render(float currentFrame)
 {
-	outputTexSP->bind();
-	outputTexSP->setUniform1f("uTime", currentFrame);
+	renderOutputTexSP->bind();
 
-	glDispatchCompute((unsigned int)OUTPUT_TEXTURE_WIDTH / 10, (unsigned int)OUTPUT_TEXTURE_HEIGHT / 10, 1);
+	renderOutputTexSP->setUniform3f("u_view_position", camera.getPosition());
+	renderOutputTexSP->setUniformMatrix4fv("u_view_matrix", camera.getViewMatrix());
+	renderOutputTexSP->setUniform1f("u_fov", glm::radians(FIELD_OF_VIEW));
+
+	glDispatchCompute((unsigned int)OUTPUT_TEXTURE_WIDTH, (unsigned int)OUTPUT_TEXTURE_HEIGHT, 1);
 
 	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT); // Make sure writing to image has finished before read.
 
-	outputTexSP->unbind();
+	renderOutputTexSP->unbind();
 
 	glClearColor(0.25f, 0.5f, 0.25f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	screenQuadSP->bind();
+	renderScreenQuadSP->bind();
 	quadVAO->bind();
 
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 	quadVAO->unbind();
-	screenQuadSP->unbind();
+	renderScreenQuadSP->unbind();
 }
 
 void showFramesPerSecond(GLFWwindow* window)
@@ -186,9 +200,12 @@ int main()
 
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 	glfwSetKeyCallback(window, keyboardCallback);
+	glfwSetCursorPosCallback(window, cursorPositionCallback);
+	glfwSetScrollCallback(window, scrollCallback);
 
 	glfwSwapInterval(0);
-	// glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
@@ -257,6 +274,46 @@ void keyboardCallback(GLFWwindow* window, int key, int scanCode, int action, int
 	}
 }
 
+void cursorPositionCallback(GLFWwindow* window, double xPos, double yPos)
+{
+	float x = (float)xPos;
+	float y = (float)yPos;
+
+	if (!CURSOR_ATTACHED)
+	{
+		CURSOR_POS_X = x;
+		CURSOR_POS_Y = y;
+
+		CURSOR_ATTACHED = true;
+	}
+
+	float xOffset = x - CURSOR_POS_X;
+	float yOffset = CURSOR_POS_Y - y;
+
+	CURSOR_POS_X = x;
+	CURSOR_POS_Y = y;
+
+	xOffset *= CAMERA_SENSITIVITY;
+	yOffset *= CAMERA_SENSITIVITY;
+
+	camera.processRotation(xOffset, yOffset);
+}
+
+void scrollCallback(GLFWwindow* window, double xOffset, double yOffset)
+{
+	FIELD_OF_VIEW = FIELD_OF_VIEW - (float)yOffset;
+	FIELD_OF_VIEW = std::min(std::max(FIELD_OF_VIEW, 1.0f), 45.0f);
+}
+
 void processInput(GLFWwindow* window)
 {
+	float realCameraSpeed = CAMERA_TRANSLATION_SPEED * DELTA_TIME;
+
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.processTranslation(Camera::Direction::FORWARD, realCameraSpeed);
+
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.processTranslation(Camera::Direction::BACKWARD, realCameraSpeed);
+
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) camera.processTranslation(Camera::Direction::RIGHT, realCameraSpeed);
+
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) camera.processTranslation(Camera::Direction::LEFT, realCameraSpeed);
 }
